@@ -23,9 +23,20 @@ that results are honest, so these rules outrank getting a good score.
 - Never describe a rejected idea as promising because its Sharpe is higher.
   The acceptance rule is the verdict.
 
+## Paper trading and risk limits
+
+- Never change a value in `risk_limits.py`, run `paper_trade.py --resume`,
+  or delete a `KILL_SWITCH` file unless the user asks for exactly that.
+- Never import `risk_limits` or `paper_trade` from research code.
+- Never edit `paper/record.csv` or `paper/account.json` by hand, and never
+  start the paper account on a past date. After running `paper_trade.py`,
+  commit the `paper/` folder so the record survives.
+- This repo places no real orders. Adding real trading needs the user's
+  explicit request.
+
 ## Before committing
 
-Run all four test files: `test_backtest.py`, `test_walk_forward.py`,
-`test_acceptance.py`, `test_improve.py`.
+Run all five test files: `test_backtest.py`, `test_walk_forward.py`,
+`test_acceptance.py`, `test_improve.py`, `test_paper_trade.py`.
 
 The user has basic Python. Keep code plain and comments in everyday words.

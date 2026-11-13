@@ -1,0 +1,11 @@
+{
+  "strategy": "trend_filter_200",
+  "started": "2026-11-12",
+  "start_cash": 10000,
+  "start_close": 71369.9,
+  "equity": 10000.0,
+  "peak": 10000,
+  "position": 0.0,
+  "last_day": "2026-11-12",
+  "stopped": null
+}

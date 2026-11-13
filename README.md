@@ -2,7 +2,9 @@
 
 A harness for testing bitcoin trading ideas honestly, on daily prices, with
 costs included, plus a loop that tests new ideas one at a time and keeps only
-what clears a rising bar. It does not place trades.
+what clears a rising bar, and a paper-trading runner that follows one
+strategy forward on real prices with pretend money. It never places a real
+trade.
 
 ## Run it
 
@@ -29,6 +31,13 @@ The same, with the year-by-year detail for every idea:
 python improve.py --folds
 ```
 
+Paper trading: download the newest prices and move the pretend account
+forward. Run it daily or less often; it catches up on missed days.
+
+```bash
+python paper_trade.py
+```
+
 Score just the three baselines over the whole research period:
 
 ```bash
@@ -53,6 +62,10 @@ python test_acceptance.py
 python test_improve.py
 ```
 
+```bash
+python test_paper_trade.py
+```
+
 ## The files
 
 | File | What it does |
@@ -65,6 +78,9 @@ python test_improve.py
 | `acceptance.py` | The acceptance rule: decides whether a lead over the baselines is bigger than luck. |
 | `proposals.py` | The queue of ideas. Add one here to start a cycle. |
 | `improve.py` | The loop: checks, tests, logs and judges every proposal. |
+| `paper_trade.py` | Paper trading: runs one strategy on real prices as they arrive, with pretend money. |
+| `risk_limits.py` | The hard limits and the kill switch. Yours to set, by hand. |
+| `paper/` | The paper account (`account.json`) and its day-by-day record (`record.csv`). |
 | `run_baselines.py` | Scores the baselines on the whole research period. |
 | `experiments.jsonl` | One line per experiment ever run. Never delete lines from it. |
 | `test_*.py` | Tests for each part above. |
@@ -93,6 +109,53 @@ result proves.
   proposal and counts as a new experiment.
 - Do not change `config.py`, the engine, or the acceptance rule to make an
   idea pass.
+
+## Paper trading
+
+`paper_trade.py` follows the strategy named by `PAPER_STRATEGY` in
+`config.py`. Until an idea clears the bar, that is a stand-in: the 200-day
+trend filter. For each new day it revalues the account at the close, checks
+the risk limits, asks the strategy what it wants, lets the limits have the
+final say, and "trades" the difference at the close with fee and slippage.
+
+- The account started on 2026-11-12 with a pretend $10,000 and only moves
+  forward. It never trades the past, so it says nothing about the holdout.
+- Trades are filled at the daily closing price by assumption. This tests
+  the strategy on prices that did not exist when it was fixed, and that the
+  pipeline works. It does not test getting real orders filled.
+- Because of that, the record comes out the same whether you run it daily
+  or catch up once a week.
+- It only runs baselines for now. Running a walk-forward idea needs a small
+  addition, to be built when there is a champion to run.
+
+## Risk limits
+
+These are in `risk_limits.py` and nowhere else. A strategy only says what
+position it wants; the limits decide what it gets. No research file imports
+them, and a test checks that.
+
+| Limit | Value | What happens |
+| --- | --- | --- |
+| Largest position | 100% of the account | Anything above is cut down; anything below zero becomes zero. |
+| One-day loss | 15% | Sell everything and stop. |
+| Fall from the highest value | 40% | Sell everything and stop. |
+| One-day price move | 50% | Treat the data as wrong: sell everything and stop. |
+| Age of newest price | 1 day | Warn not to act on the position shown. |
+
+A stop stays in place until you clear it:
+
+```bash
+python paper_trade.py --resume
+```
+
+**Kill switch.** Create a file named `KILL_SWITCH` in this folder and the
+position is forced to zero from the next run. Delete the file to carry on.
+
+The values are placeholders for you to choose. For scale, on the research
+data (2015 to 2024) the stand-in strategy would have hit the 15% one-day
+limit twice and fallen 40% below its high for the first time in January
+2018; its worst fall was 72%. A 40% limit will stop this strategy sooner or
+later, and clearing the stop is then your decision.
 
 ## The rules the harness enforces
 

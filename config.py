@@ -38,3 +38,10 @@ WF_TEST_DAYS = 365           # each choice is then scored on the next year
 ACCEPT_ALPHA = 0.05          # if no idea tried had any real edge, the chance that even one gets accepted
 ACCEPT_BLOCK_DAYS = 30       # history is reshuffled in 30-day chunks to measure how much luck moves the score
 ACCEPT_RESAMPLES = 2000      # how many reshuffled histories to try
+
+# --- Paper trading ----------------------------------------------------------
+# Pretend trading with pretend money, on real prices as they arrive.
+# The hard limits on it are NOT here. They are in risk_limits.py.
+PAPER_STRATEGY = "trend_filter_200"   # a baseline from strategies.py; a stand-in until there is a champion
+PAPER_START_CASH = 10_000             # pretend dollars
+PAPER_FOLDER = "paper"                # where the account and its day-by-day record are kept

@@ -63,8 +63,9 @@ def rows_to_frame(rows, now=None):
     return frame[frame.index < today]
 
 
-def download():
-    start = datetime.strptime(config.START_DATE, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+def download(start=None):
+    """Download every day from `start` (default: the beginning) up to yesterday."""
+    start = start or datetime.strptime(config.START_DATE, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     now = datetime.now(timezone.utc)
     step = timedelta(seconds=config.GRANULARITY * (MAX_CANDLES_PER_REQUEST - 1))
 
@@ -77,6 +78,24 @@ def download():
         time.sleep(0.25)   # be polite to the API
 
     return rows_to_frame(rows, now)
+
+
+def merge(existing, new):
+    """Add newly downloaded days to an existing table. Where both have a day, the new one wins."""
+    return pd.concat([existing[~existing.index.isin(new.index)], new]).sort_index()
+
+
+def update():
+    """Bring the saved price file up to date, downloading only the days it is missing."""
+    if not os.path.exists(config.DATA_PATH):
+        frame = download()
+    else:
+        existing = pd.read_csv(config.DATA_PATH, index_col="date", parse_dates=True)
+        start = (existing.index[-1] - pd.Timedelta(days=5)).to_pydatetime().replace(tzinfo=timezone.utc)
+        frame = merge(existing, download(start))
+    os.makedirs(os.path.dirname(config.DATA_PATH), exist_ok=True)
+    frame.to_csv(config.DATA_PATH)
+    return frame
 
 
 def main():
