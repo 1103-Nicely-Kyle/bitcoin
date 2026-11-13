@@ -20,6 +20,7 @@ that score was traded with a setting chosen before that day.
 import pandas as pd
 
 import config
+from acceptance import explain, judge, required_ratio
 from backtest import (count_experiments, load_research_data, log_experiment,
                       run_backtest, summarize)
 from strategies import buy_and_hold, ma_crossover, trend_filter
@@ -118,17 +119,20 @@ def main():
     print(f"Scored span: {span[0].date()} to {span[-1].date()} ({len(span)} days).")
     print(f"Costs: {config.FEE:.2%} fee + {config.SLIPPAGE:.2%} slippage per trade.")
 
-    rows = {
-        "buy_and_hold": summarize(score_fixed(prices, buy_and_hold, {})),
-        "fixed trend_filter 200": summarize(score_fixed(prices, trend_filter, {"window": 200})),
-        "fixed ma_crossover 50/200": summarize(
-            score_fixed(prices, ma_crossover, {"fast": 50, "slow": 200})),
+    # The baselines every candidate has to beat, scored on the same days.
+    baselines = {
+        "buy_and_hold": score_fixed(prices, buy_and_hold, {}),
+        "fixed trend_filter 200": score_fixed(prices, trend_filter, {"window": 200}),
+        "fixed ma_crossover 50/200": score_fixed(prices, ma_crossover, {"fast": 50, "slow": 200}),
     }
+    rows = {name: summarize(result) for name, result in baselines.items()}
+    candidates = {}
 
     for name, family in FAMILIES.items():
         result, folds = walk_forward(prices, family["strategy"], family["grid"], warmup=WARMUP_DAYS)
         metrics = summarize(result)
         rows[name] = metrics
+        candidates[name] = result
 
         print(f"\n{name}: chosen from {len(family['grid'])} settings each period")
         shown = pd.DataFrame({
@@ -159,7 +163,15 @@ def main():
         "trades": table["trades"].astype(int),
         "time in market": table["time_in_market"].map("{:.0%}".format),
     }).to_string())
-    print(f"\nExperiments logged so far: {count_experiments()}")
+
+    trials = count_experiments()
+    baseline_returns = {name: result["return"] for name, result in baselines.items()}
+    verdicts = {name: judge(result["return"], baseline_returns, trials=trials)
+                for name, result in candidates.items()}
+    print(f"\nAcceptance check. With {trials} experiments logged, a lead must be at least "
+          f"{required_ratio(trials):.2f} times its own noise, against every baseline.")
+    for name, verdict in verdicts.items():
+        print(explain(name, verdict))
 
 
 if __name__ == "__main__":

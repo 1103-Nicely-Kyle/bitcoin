@@ -31,3 +31,10 @@ EXPERIMENT_LOG = "experiments.jsonl"
 OBJECTIVE = "sharpe"         # the score used to choose settings (return per unit of risk)
 WF_MIN_TRAIN_DAYS = 1095     # the first choice uses the first 3 years; later ones use everything so far
 WF_TEST_DAYS = 365           # each choice is then scored on the next year
+
+# --- Acceptance rule --------------------------------------------------------
+# A new idea is only accepted if its lead over every baseline is clearly
+# bigger than the lead that luck alone could produce.
+ACCEPT_ALPHA = 0.05          # if no idea tried had any real edge, the chance that even one gets accepted
+ACCEPT_BLOCK_DAYS = 30       # history is reshuffled in 30-day chunks to measure how much luck moves the score
+ACCEPT_RESAMPLES = 2000      # how many reshuffled histories to try

@@ -27,6 +27,10 @@ python test_walk_forward.py
 ```
 
 ```bash
+python test_acceptance.py
+```
+
+```bash
 python walk_forward.py
 ```
 
@@ -42,6 +46,8 @@ python walk_forward.py
 | `test_backtest.py` | Tests that the engine cannot peek at the future and charges costs correctly. |
 | `walk_forward.py` | Scores strategies that have settings: chooses the setting on past data, trades it for the next year, repeats. |
 | `test_walk_forward.py` | Tests that a choice never sees the days it is scored on. |
+| `acceptance.py` | The acceptance rule: decides whether a lead over the baselines is bigger than luck. |
+| `test_acceptance.py` | Tests that luck is turned away and a real edge gets through. |
 | `experiments.jsonl` | One line per experiment ever run. Never delete lines from it. |
 
 ## The rules the harness enforces
@@ -58,6 +64,12 @@ python walk_forward.py
   walk-forward: each setting is picked using only earlier prices, then
   scored on the following year. The score used to pick is Sharpe (return per
   unit of risk), set by `OBJECTIVE` in `config.py`.
+- **A lead has to be bigger than luck.** A candidate is accepted only if
+  its Sharpe lead over every baseline is several times larger than the noise
+  in that lead. The noise is measured by reshuffling the history in 30-day
+  chunks. The bar rises with the number of experiments in the log: 1.64
+  times the noise for the first idea, 2.33 after 5, 2.58 after 10, 3.29
+  after 100.
 - **Everything is counted.** Each experiment is appended to
   `experiments.jsonl`. The more ideas tried, the more likely the best one is
   luck, so the count matters later. Re-running an identical experiment does
@@ -101,5 +113,26 @@ In every period the chosen setting had scored between 1.3 and 2.2 on the
 data it was picked from. On the year that followed it scored anywhere from
 -1.4 to 2.8. That gap is why nothing here is judged on the data it was
 tuned on.
+
+## Acceptance results
+
+With 5 experiments logged, a lead must be at least 2.33 times its own noise.
+
+| Candidate | Against | Lead | Noise | Lead / noise | Verdict |
+| --- | --- | --- | --- | --- | --- |
+| Trend filter, walk-forward | Buy and hold | +0.11 | 0.28 | +0.38 | fail |
+| | Trend filter, fixed 200-day | +0.04 | 0.26 | +0.16 | fail |
+| | MA crossover, fixed 50/200 | +0.09 | 0.28 | +0.33 | fail |
+| MA crossover, walk-forward | Buy and hold | -0.26 | 0.31 | -0.84 | fail |
+| | Trend filter, fixed 200-day | -0.32 | 0.23 | -1.43 | fail |
+| | MA crossover, fixed 50/200 | -0.27 | 0.16 | -1.68 | fail |
+
+Both candidates are rejected. Nothing has been accepted yet.
+
+The bar is high. On this span the noise in a lead over buy-and-hold is about
+0.28, so a candidate needs a Sharpe near 1.6 against buy-and-hold's 0.93 to
+be accepted today, and near 1.85 once 100 experiments have been logged. The
+rule was checked on made-up strategies with no edge at all: it accepted 5.8%
+of them when it was aiming for 5%.
 
 This is a research project. Nothing here is financial advice.
