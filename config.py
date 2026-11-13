@@ -24,3 +24,10 @@ HOLDOUT_START = "2025-01-01"
 # --- Files ------------------------------------------------------------------
 DATA_PATH = "data/btc_usd_daily.csv"
 EXPERIMENT_LOG = "experiments.jsonl"
+
+# --- Walk-forward testing ---------------------------------------------------
+# Settings are chosen on past data, then scored on the following stretch that
+# was not used to choose them. Then the window moves forward and it repeats.
+OBJECTIVE = "sharpe"         # the score used to choose settings (return per unit of risk)
+WF_MIN_TRAIN_DAYS = 1095     # the first choice uses the first 3 years; later ones use everything so far
+WF_TEST_DAYS = 365           # each choice is then scored on the next year

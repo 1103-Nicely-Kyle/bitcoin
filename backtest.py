@@ -94,7 +94,7 @@ def run_backtest(prices, positions, fee=None, slippage=None):
 def summarize(result):
     """Boil a backtest down to the handful of numbers worth comparing."""
     returns = result["return"]
-    equity = result["equity"]
+    equity = (1 + returns).cumprod()   # rebuilt so this also works on a slice
     years = len(returns) / config.PERIODS_PER_YEAR
 
     total_return = equity.iloc[-1] - 1
@@ -118,6 +118,8 @@ def summarize(result):
 def log_experiment(name, params, hypothesis, metrics, path=None):
     """Append one line to the experiment log. Nothing is ever deleted from it.
 
+    Returns True if a line was added, False if this exact run was already there.
+
     The count of lines matters: the more ideas you have tried, the more likely
     the best-looking one is just luck.
     """
@@ -131,8 +133,20 @@ def log_experiment(name, params, hypothesis, metrics, path=None):
         "slippage": config.SLIPPAGE,
         "metrics": metrics,
     }
+    # Re-running the exact same experiment is not a new idea, so it is not
+    # logged twice.
+    if os.path.exists(path):
+        with open(path) as log:
+            for line in log:
+                if not line.strip():
+                    continue
+                earlier = json.loads(line)
+                if all(earlier.get(key) == value for key, value in entry.items() if key != "when"):
+                    return False
+
     with open(path, "a") as log:
         log.write(json.dumps(entry) + "\n")
+    return True
 
 
 def count_experiments(path=None):
